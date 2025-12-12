@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+
+# Local/derived artifacts
+*.db
+example.db
+
+# Secrets / keys
+*.pem
+
+# OS/editor noise
+.DS_Store
+.vscode/
