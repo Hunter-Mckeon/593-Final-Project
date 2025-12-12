@@ -1,0 +1,46 @@
+# websubmit_schema.yml
+
+tables:
+  students:
+    kind: data_subject          # K9db DATA_SUBJECT table
+    id_column: email            # primary key for the data subject
+    columns:
+      # changed the ID column to an email text column
+      - name: email
+        type: text
+        pk: true
+      - name: name
+        type: text
+
+  assignments:
+    kind: regular               # global reference table
+    columns:
+      - name: ID
+        type: int
+        pk: true
+        auto_increment: true
+      - name: Name
+        type: text
+
+  submissions:
+    kind: owned
+    owner:
+      data_subject: students
+      via_column: student_id
+      target_column: email
+    columns:
+      - name: ID
+        type: int
+        pk: true
+        auto_increment: true
+      - name: student_id
+        type: text
+      - name: assignment_id
+        type: int
+        fk:
+          table: assignments
+          column: ID
+      - name: answer
+        type: text
+        allow: 'admin@bu.edu'    # 👈 admin/professor who can also see answers
+

@@ -1,0 +1,43 @@
+{# 1. DATA_SUBJECT tables (e.g., students) #}
+{% for name, t in tables.items() if t.kind == "data_subject" %}
+CREATE DATA_SUBJECT TABLE {{ name }} (
+  {%- for col in t.columns %}
+  {{ col.name }} {{ col.type | upper }}{% if col.pk %} PRIMARY KEY{% endif %}{% if not loop.last %},{% endif %}
+  {%- endfor %}
+);
+
+{% endfor %}
+
+{# 2. Regular and owned tables #}
+{% for name, t in tables.items() if t.kind != "data_subject" %}
+CREATE TABLE {{ name }} (
+  {%- set pk_cols = t.columns | selectattr("pk") | map(attribute="name") | list -%}
+  {%- set fk_cols = t.columns | selectattr("fk") | list -%}
+  {%- set has_owner_fk = (t.kind == "owned" and t.owner is defined) -%}
+
+  {# Column definitions #}
+  {%- for col in t.columns %}
+  {{ col.name }} {{ col.type | upper }}{% if col.auto_increment %} AUTO_INCREMENT{% endif %}{% if not loop.last or pk_cols or fk_cols or has_owner_fk %},{% endif %}
+  {%- endfor %}
+
+  {# PRIMARY KEY constraint #}
+  {%- if pk_cols %}
+  PRIMARY KEY({{ pk_cols | join(", ") }}){% if fk_cols or has_owner_fk %},{% endif %}
+  {%- endif %}
+
+  {# OWNED_BY constraint for owned tables (student_id → students(email)) #}
+  {%- if has_owner_fk %}
+  FOREIGN KEY ({{ t.owner.via_column }}) OWNED_BY {{ t.owner.data_subject }}({{ t.owner.target_column }}){% if fk_cols %},{% endif %}
+  {%- endif %}
+
+  {# FOREIGN KEY constraints for normal REFERENCES #}
+  {%- for col in fk_cols %}
+  FOREIGN KEY ({{ col.name }}) REFERENCES {{ col.fk.table }}({{ col.fk.column }}){% if not loop.last %},{% endif %}
+  {%- endfor %}
+);
+{% if t.kind == "owned" %}
+-- Ownership: rows in {{ name }} belong to data subject {{ t.owner.data_subject }}
+-- via foreign key column {{ t.owner.via_column }}.
+{% endif %}
+
+{% endfor %}

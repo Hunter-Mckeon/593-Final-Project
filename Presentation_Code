@@ -1,0 +1,85 @@
+# --- 1. SSH into the K9db server ---
+ssh -i "/Users/howardhuntermckeon/Desktop/593 project/hunter.pem" ubuntu@98.81.159.0
+
+
+# --- 2. Delete and restart K9db ---
+cd ~
+./delete_and_restart.sh
+
+
+# --- 3. Exit the server so we can load the schema from local machine ---
+exit
+
+
+# --- 4. Load YOUR GENERATED SCHEMA into K9db ---
+cd "/Users/howardhuntermckeon/Desktop/593 project"
+scp -i "/Users/howardhuntermckeon/Desktop/593 project/hunter.pem" \
+"/Users/howardhuntermckeon/Desktop/593 project/generated_k9db.sql" \
+ubuntu@98.81.159.0:/home/ubuntu/
+
+
+# --- 5. Reconnect to the server ---
+ssh -i "/Users/howardhuntermckeon/Desktop/593 project/hunter.pem" ubuntu@98.81.159.0
+
+# Connect to K9db's MySQL endpoint
+mysql -h 98.81.159.0 -P 10001
+
+
+# --- 6. Load your schema inside MySQL ---
+SOURCE /home/ubuntu/generated_k9db.sql;
+
+
+# --- 7. Add test data manually (students, assignments, submissions) ---
+INSERT INTO students VALUES ('student1@bu.edu', 'Student 1');
+INSERT INTO students VALUES ('student2@bu.edu', 'Student 2');
+INSERT INTO students VALUES ('admin@bu.edu', 'Admin');
+
+INSERT INTO assignments (Name) VALUES ('Assignment 1');
+INSERT INTO assignments (Name) VALUES ('Assignment 2');
+INSERT INTO assignments (Name) VALUES ('Assignment 3');
+
+INSERT INTO submissions (student_id, assignment_id, answer) VALUES ('student1@bu.edu', 1, 'My first answer');
+INSERT INTO submissions (student_id, assignment_id, answer) VALUES ('student1@bu.edu', 2, 'My second answer');
+INSERT INTO submissions (student_id, assignment_id, answer) VALUES ('student2@bu.edu', 1, 'I am student2 and this is my answer for assignment 1');
+INSERT INTO submissions (student_id, assignment_id, answer) VALUES ('student2@bu.edu', 2, 'I am student2 and this is my answer for assignment 2');
+INSERT INTO submissions (student_id, assignment_id, answer) VALUES ('student1@bu.edu', 3, 'My third answer');
+
+
+# --- 8. Confirm the data loaded correctly ---
+SELECT * FROM students;
+SELECT * FROM assignments;
+SELECT * FROM submissions;
+
+# exit MySQL
+exit
+
+
+# --- 9. Run the Sesame app with YOUR policies.rs ---
+cd "/Users/howardhuntermckeon/Desktop/593 project/sesame-example"
+cargo run
+
+
+# --- 10. In the browser (http://127.0.0.1:8000) ---
+# Login as student1@bu.edu → only sees their own answers
+# Login as admin@bu.edu     → sees all submissions
+
+
+# --- 11. Stop the server to demo K9db deletion rules ---
+CTRL + C
+
+# --- 12. Back to MySQL to show "can't delete a student with data" ---
+mysql -h 98.81.159.0 -P 10001
+
+DELETE FROM students WHERE email = 'student1@bu.edu';  
+SELECT * FROM students;
+
+DELETE FROM submissions WHERE student_id = 'student1@bu.edu';  
+DELETE FROM students WHERE email = 'student1@bu.edu';         
+
+
+# --- 13. Confirm the data deleted correctly ---
+SELECT * FROM students;
+SELECT * FROM assignments;
+SELECT * FROM submissions;
+
+exit

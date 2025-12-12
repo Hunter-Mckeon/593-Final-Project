@@ -1,0 +1,20 @@
+# AUTO-GENERATED Sesame-style policies for WebSubmit
+# Generated from websubmit_schema.yml
+
+policies:
+
+  - name: "students_self_access"
+    description: "Data subject can see and manage their own students row"
+    resource: "students"
+    subject_type: "students"
+    actions: ["read", "update", "delete"]
+    condition: "row.email == subject.id"
+
+
+
+  - name: "submissions_owner_access"
+    description: "Data subject can read rows they own in submissions"
+    resource: "submissions"
+    subject_type: "students"
+    actions: ["read"]
+    condition: "row.student_id == subject.id"

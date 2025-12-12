@@ -1,0 +1,134 @@
+# policy.yml
+
+roles:
+  user:
+    description: "Regular end user"
+  admin:
+    description: "Site administrator"
+  dpo:
+    description: "Data protection officer / privacy admin"
+
+purposes:
+  task_view:
+    description: "User viewing tasks and projects"
+  task_edit:
+    description: "User creating or updating projects/tasks"
+  sar_access:
+    description: "Serving a subject access request"
+  sar_delete:
+    description: "Serving a deletion (erasure) request"
+
+data_categories:
+  user_profile:
+    table: users
+    owner:
+      type: column
+      column: id
+    fields: [email, name]
+    access_policies:
+      - purpose: task_view
+        allow:
+          - self      # ONLY self; remove admin here to avoid metadata leaks
+      - purpose: task_edit
+        allow:
+          - self      # user can edit their own account settings if needed
+          - admin
+      - purpose: sar_access
+        allow:
+          - self
+          - admin
+          - dpo
+    retention:
+      rule: "until_account_deletion"
+
+  project:
+    table: projects
+    owner:
+      type: fk
+      column: owner_id
+      ref_table: users
+      ref_column: id
+    fields: [title, owner_id]
+    access_policies:
+      - purpose: task_view
+        allow:
+          - owner
+          - member
+          - admin
+      - purpose: task_edit
+        allow:
+          - owner
+          - admin
+      - purpose: sar_access
+        allow:
+          - owner        # tighter privacy for SAR
+          - admin
+          - dpo
+    retention:
+      rule: "until_owner_account_deletion_or_project_deletion"
+
+  task:
+    table: tasks
+    owner:
+      type: via_project_owner
+      project_fk: project_id
+      project_table: projects
+      project_owner_column: owner_id
+    fields: [title, done, project_id]
+    access_policies:
+      - purpose: task_view
+        allow:
+          - project_owner
+          - project_member  # any user in project_members for this project
+          - admin
+      - purpose: task_edit
+        allow:
+          - project_member
+          - admin
+      - purpose: sar_access
+        allow:
+          - project_owner
+          - project_member
+          - admin
+          - dpo
+    retention:
+      rule: "until_project_deletion"
+
+  project_membership:
+    table: project_members
+    owner:
+      type: fk
+      column: user_id
+      ref_table: users
+      ref_column: id
+    fields: [project_id, user_id, role]
+    access_policies:
+      - purpose: task_view
+        allow:
+          - self       # the member themself
+          - project_owner
+          - admin
+      - purpose: sar_access
+        allow:
+          - self
+          - admin
+          - dpo
+    retention:
+      rule: "until_account_deletion"
+
+sar:
+  access:
+    purpose: sar_access
+    include_categories:
+      - user_profile
+      - project
+      - task
+      - project_membership
+
+  deletion:
+    purpose: sar_delete
+    delete_categories:
+      - user_profile
+      - project
+      - task
+      - project_membership

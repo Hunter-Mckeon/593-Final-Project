@@ -1,0 +1,21 @@
+# AUTO-GENERATED Sesame-style policies for WebSubmit
+# Generated from websubmit_schema.yml
+
+policies:
+{% for name, t in tables.items() if t.kind == "data_subject" %}
+  - name: "{{ name }}_self_access"
+    description: "Data subject can see and manage their own {{ name }} row"
+    resource: "{{ name }}"
+    subject_type: "{{ name }}"
+    actions: ["read", "update", "delete"]
+    condition: "row.{{ t.id_column }} == subject.id"
+{% endfor %}
+
+{% for name, t in tables.items() if t.kind == "owned" %}
+  - name: "{{ name }}_owner_access"
+    description: "Data subject can read rows they own in {{ name }}"
+    resource: "{{ name }}"
+    subject_type: "{{ t.owner.data_subject }}"
+    actions: ["read"]
+    condition: "row.{{ t.owner.via_column }} == subject.id"
+{% endfor %}
